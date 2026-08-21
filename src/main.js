@@ -1,4 +1,4 @@
-// workbuddy_checkin.js
+// src/main.js
 // WorkBuddy 每日积分自动签到 —— Cloudflare Workers + 本地 Node.js 双模运行
 // 部署见 README.md；核心逻辑与平台无关，仅入口分流。
 const ENDPOINT_CHECKIN = "https://copilot.tencent.com/v2/billing/meter/daily-checkin";
@@ -66,11 +66,11 @@ function parseResult(status, body) {
     const extra = streak !== null ? ` (连续 ${streak} 天)` : "";
     return { ok: true, already: false, msg: "签到成功" + extra + (msg ? " | " + msg : ""), awarded, streak };
   }
-  if (code === 10001 || body.includes("已签到") || body.toLowerCase().includes("already")) {
-    return { ok: true, already: true, msg: "今日已签到(幂等命中)" + (code !== null ? ` | code=${code}` : ""), awarded: 0, streak };
-  }
   if (status === 401) {
     return { ok: false, already: false, msg: `令牌失效(401), 请在 ${ENV_MULTI} 对应行更新令牌`, awarded: null, streak: null };
+  }
+  if (code === 10001 || body.includes("已签到") || body.toLowerCase().includes("already")) {
+    return { ok: true, already: true, msg: "今日已签到(幂等命中)" + (code !== null ? ` | code=${code}` : ""), awarded: 0, streak };
   }
   return { ok: false, already: false, msg: `签到失败 status=${status} code=${code} msg=${msg}`, awarded: null, streak: null };
 }
@@ -85,10 +85,9 @@ async function queryBalance(token, uid) {
   if (status !== 200) return null;
   try {
     const obj = JSON.parse(body);
-    let accts = (obj.data || {}).Response || {};
-    accts = (accts.Data || {}).Accounts || [];
+    const accounts = obj.data?.Response?.Data?.Accounts ?? [];
     let total = 0;
-    for (const a of accts) {
+    for (const a of accounts) {
       const v = a.CycleCapacityRemainPrecise ?? a.CycleCapacityRemain ?? a.CapacityRemainPrecise ?? a.CapacityRemain;
       const n = parseFloat(v);
       if (!Number.isNaN(n)) total += n;
@@ -300,7 +299,9 @@ export default {
   // 定时触发(Cron): 由 wrangler.toml 的 triggers.crons 配置
   async scheduled(_controller, env, ctx) {
     const log = makeLogger((m) => console.log(m));
-    ctx.waitUntil(runCheckin({ env, log }));
+    ctx.waitUntil(
+      runCheckin({ env, log }).catch((e) => console.error("scheduled 异常:", e)),
+    );
   },
   // 手动触发: GET /?key=xxx[&dry=1][&no-notify=1]
   async fetch(request, env) {
