@@ -1,6 +1,6 @@
 # WorkBuddy 每日积分自动签到
 
-WorkBuddy（腾讯 CodeBuddy Copilot）每日积分自动签到脚本，支持 **Cloudflare Workers 定时执行** 与 **本地 Node.js 直接运行** 两种模式，单文件零运行时依赖。环境变量与原青龙面板版格式完全兼容，可直接迁移。
+WorkBuddy（腾讯 CodeBuddy Copilot）每日积分自动签到脚本，支持 **Cloudflare Workers 定时执行** 与 **本地 Node.js 直接运行** 两种模式，单文件零运行时依赖。
 
 ## 功能
 
@@ -115,10 +115,6 @@ curl "https://<your-worker>.workers.dev/?key=YOUR_SECRET&no-notify=1"
 不设置 `WORKBUDDY_SECRET` 时接口无鉴权，请谨慎公开暴露。
 
 本地模拟 Worker 环境可用 `mise exec -- npx wrangler dev`，再请求 `http://localhost:8787/` 验证。
-
-## 从青龙面板迁移
-
-JS 版环境变量与原青龙 Python 版格式完全兼容，`WORKBUDDY` 多账号格式一致，可直接迁移。
 
 ## License
 
