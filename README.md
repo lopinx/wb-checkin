@@ -1,121 +1,173 @@
 # WorkBuddy 每日积分自动签到
 
-WorkBuddy（腾讯 CodeBuddy Copilot）每日积分自动签到脚本，支持 **Cloudflare Workers 定时执行**、**GitHub Actions 定时/手动执行** 与 **本地 Node.js 直接运行** 三种模式，单文件零运行时依赖。
+> 腾讯 CodeBuddy Copilot 每日积分自动签到脚本，支持 **Cloudflare Workers**、**GitHub Actions** 和 **本地 Node.js** 三种运行方式，单文件零运行时依赖。
+
+[![License](https://img.shields.io/badge/license-WTFPL-blue)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen)](https://nodejs.org)
+
+---
 
 ## 功能
 
-- 每日自动调用签到接口（幂等，重复执行不重复发积分）
-- 支持多账号（环境变量 `WORKBUDDY` 每行一个账号）
-- 签到前后积分对比，展示本次获得量
-- 企业微信应用消息推送通知
-- Cloudflare Workers 定时/HTTP、GitHub Actions 定时/手动、本地命令行多入口
+| 特性 | 说明 |
+|------|------|
+| 🔄 每日签到 | 调用腾讯 CodeBuddy 签到接口，幂等执行不重复发积分 |
+| 👥 多账号支持 | `WORKBUDDY` 环境变量每行一个账号，格式 `ACCESS_TOKEN#UID#备注` |
+| 📊 积分对比 | 签到前后自动查询总积分，展示本次获得量 |
+| 💬 企业微信通知 | 配置 `WECOM` 后自动推送签到结果到企业微信群 |
+| ☁️ 三模部署 | Cloudflare Workers / GitHub Actions / 本地 Node.js 任选其一 |
 
-## 环境要求
+---
 
-| 工具 | 版本 | 用途 |
-|------|------|------|
-| Node.js | ≥ 18（推荐 20+） | 本地运行、wrangler |
-| wrangler | ≥ 3 | 部署到 Cloudflare |
+## 快速开始
 
-安装依赖（仅 wrangler）：
+### 1. 准备账号令牌
+
+从本机获取登录态（Windows 示例）：
 
 ```bash
-mise exec -- npm install
+cat "$LOCALAPPDATA\CodeBuddyExtension\Data\Public\auth\workbuddy-desktop.info"
 ```
 
+取出其中的 `accessToken` 和 `uid` 备用。
+
+### 2. 本地运行（开发/调试）
+
+```bash
+# 安装依赖
+npm install
+
+# 首次试跑（不发请求）
+node src/main.js --dry-run --no-notify
+
+# 正式签到
+node src/main.js
+```
+
+如需配置环境变量，复制模板后填写：
+
+```bash
+cp .env.example .env   # 编辑 .env 填入账号信息
+```
+
+> `.env` 已在 `.gitignore` 中，不会被提交。
+
+---
+
 ## 环境变量
+
+所有运行方式共用同一套环境变量名：
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
 | `WORKBUDDY` | 三选一 | 多账号，每行 `ACCESS_TOKEN#UID#备注`，换行分隔 |
 | `WORKBUDDY_ACCESS_TOKEN` + `WORKBUDDY_UID` | 三选一 | 旧单账号兜底 |
-| （本机令牌文件） | 三选一 | 仅本地模式：自动探测 `workbuddy-desktop.info` |
-| `WORKBUDDY_SECRET` | 否 | CF 端 HTTP 手动触发鉴权密钥 |
-| `WECOM` | 否 | 企业微信应用消息通知，格式 `corpid\|agentid\|secret` |
+| `WECOM` | 否 | 企业微信通知，格式 `corpid|agentid|secret` |
+| `WORKBUDDY_SECRET` | 否 | 仅 CF Workers：HTTP 手动触发鉴权密钥 |
 
-> accessToken 是 JWT，约 60 天有效；过期后对应账号报 401，更新对应变量即可。签到接口幂等，重复执行不重复发放。
+> `accessToken` 是 JWT，约 60 天有效；过期后对应账号报 401，更新对应变量即可。
 
-### 本机文件兜底（仅本地运行）
+---
 
-本地运行时若未设置环境变量，会自动读取以下路径的 `workbuddy-desktop.info`：
+## 三种运行方式
 
-- Windows: `%LOCALAPPDATA%\CodeBuddyExtension\Data\Public\auth\workbuddy-desktop.info`
-- Windows: `%APPDATA%\CodeBuddyExtension\Data\Public\auth\workbuddy-desktop.info`
-- macOS: `~/Library/Application Support/CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info`
-- Linux: `~/.config/CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info`
+### 方式一：GitHub Actions（推荐）
 
-文件中的 `auth.accessToken` 与 `account.uid` 会作为单账号使用。
+无需服务器，免费托管，开箱即用。
 
-## 本地 Node.js 运行
+#### 配置 Secrets
 
-```bash
-cp .env.example .env   # 可选：填写账号信息（也可不填，走本机令牌文件兜底）
-mise exec -- node src/main.js --dry-run    # 首次建议试跑，不发请求
-mise exec -- node src/main.js              # 正式签到
-mise exec -- node src/main.js --no-notify  # 签到但不推送通知
-```
+仓库 → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**：
 
-本地可用 `.env` 文件配置环境变量（不会覆盖已存在的系统变量）。
+| Secret | 说明 |
+|--------|------|
+| `WORKBUDDY` | 多账号（必填） |
+| `WECOM` | 企业微信通知（可选） |
 
-退出码：全部成功 / dry-run 为 0，有真实失败为 1，未找到任何登录态为 2。
+#### 定时触发
 
-## GitHub Actions 运行
+Workflow 已内置于 `.github/workflows/checkin.yml`，默认每天 UTC 01:30（北京时间 09:30）自动执行。
 
-项目内置 `.github/workflows/checkin.yml`，支持定时自动签到和手动触发，无需服务器或额外部署。
+也可在仓库 **Actions → WorkBuddy 签到 → Run workflow** 手动触发，支持勾选「干跑」选项。
 
-### 配置 Secrets
+---
 
-在仓库 **Settings → Secrets and variables → Actions → New repository secret** 添加：
+### 方式二：Cloudflare Workers
 
-| Secret | 必填 | 说明 |
-|--------|------|------|
-| `WORKBUDDY` | 是 | 多账号，每行 `ACCESS_TOKEN#UID#备注`，换行分隔 |
-| `WECOM` | 否 | 企业微信通知，格式 `corpid\|agentid\|secret` |
+适合需要自定义 HTTP 接口或已有 CF 环境的用户。
 
-> `WORKBUDDY_SECRET` 仅用于 CF Workers HTTP 鉴权，GitHub Actions 不需要。
-
-### 自动定时
-
-Workflow 默认每天 UTC 01:30（北京时间 09:30）执行，与 `wrangler.toml` 的 cron 一致。GitHub Actions cron 使用 UTC，且可能有几分钟延迟。
-
-### 手动触发
-
-在仓库 **Actions → WorkBuddy 签到 → Run workflow** 可手动触发，支持勾选「干跑」选项（不实际请求签到接口）。
-
-## Cloudflare Workers 部署
+#### 部署步骤
 
 ```bash
-mise exec -- npx wrangler login
+npm install
+npx wrangler login
 
-# 设置多账号（粘贴多行值，每行 ACCESS_TOKEN#UID#备注）
-mise exec -- npx wrangler secret put WORKBUDDY
-# 可选：HTTP 手动触发鉴权
-mise exec -- npx wrangler secret put WORKBUDDY_SECRET
-# 可选：企业微信通知
-mise exec -- npx wrangler secret put WECOM
+# 设置 Secrets
+npx wrangler secret put WORKBUDDY
+npx wrangler secret put WECOM     # 可选
+npx wrangler secret put WORKBUDDY_SECRET  # 可选，HTTP 鉴权
 
-mise exec -- npx wrangler deploy
+# 部署
+npx wrangler deploy
 ```
 
-定时任务由 `wrangler.toml` 的 `[triggers] crons` 配置，默认 `30 1 * * *`（UTC，即北京时间 09:30）每天执行一次。如需调整时间，修改 cron 表达式后重新部署。
-
-### 手动触发（HTTP）
-
-部署后可通过 HTTP 手动触发，便于测试：
+#### 手动触发（HTTP）
 
 ```bash
 # 带鉴权密钥时
-curl "https://<your-worker>.workers.dev/?key=YOUR_SECRET"
+curl "https://<worker>.workers.dev/?key=YOUR_SECRET"
+
 # 干跑
-curl "https://<your-worker>.workers.dev/?key=YOUR_SECRET&dry=1"
+curl "https://<worker>.workers.dev/?key=YOUR_SECRET&dry=1"
+
 # 跳过通知
-curl "https://<your-worker>.workers.dev/?key=YOUR_SECRET&no-notify=1"
+curl "https://<worker>.workers.dev/?key=YOUR_SECRET&no-notify=1"
 ```
 
-不设置 `WORKBUDDY_SECRET` 时接口无鉴权，请谨慎公开暴露。
+本地调试可用 `npx wrangler dev`，访问 `http://localhost:8787/`。
 
-本地模拟 Worker 环境可用 `mise exec -- npx wrangler dev`，再请求 `http://localhost:8787/` 验证。
+---
+
+### 方式三：本地 Node.js
+
+适合开发者本地调试或作为其他自动化流程的一环。
+
+```bash
+npm start            # 正式签到
+npm run dry          # 干跑（不发请求）
+npm start -- --no-notify   # 签到但不推送通知
+```
+
+退出码：全部成功 = 0，有失败 = 1，未找到登录态 = 2。
+
+---
+
+## 项目结构
+
+```
+wb-checkin/
+├── src/
+│   └── main.js              # 核心脚本（~400 行，三模共用）
+├── .github/
+│   └── workflows/
+│       └── checkin.yml      # GitHub Actions 定时任务
+├── wrangler.toml            # Cloudflare Workers 配置
+├── package.json
+├── .env.example             # 环境变量模板
+├── .gitignore
+├── LICENSE                  # WTFPL
+└── README.md
+```
+
+**核心架构**：`src/main.js` 为平台无关的单一实现，通过入口分流适配三种运行环境：
+- **Cloudflare Workers**：`export default { scheduled, fetch }` — 支持定时和 HTTP 触发
+- **GitHub Actions**：直接运行 `node src/main.js`，命中本地入口
+- **本地 Node.js**：`isMain` 检测路径自动激活 `runLocal()`
+
+所有三方依赖已通过 `node:fs` 动态 `import()` 隔离，保证 CF Workers 环境下不会被引入。
+
+---
 
 ## License
 
-[WTFPL](./LICENSE) – Do What The Fuck You Want To.
+[WTFPL](./LICENSE) — Do What The Fuck You Want To.
