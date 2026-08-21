@@ -7,7 +7,7 @@ WorkBuddy（腾讯 CodeBuddy Copilot）每日积分自动签到脚本，支持 *
 - 每日自动调用签到接口（幂等，重复执行不重复发积分）
 - 支持多账号（环境变量 `WORKBUDDY` 每行一个账号）
 - 签到前后积分对比，展示本次获得量
-- WxPusher 微信推送通知
+- 企业微信应用消息推送通知
 - Cloudflare Cron 定时 / HTTP 手动触发 / 本地命令行三入口
 
 ## 环境要求
@@ -31,7 +31,7 @@ mise exec -- npm install
 | `WORKBUDDY_ACCESS_TOKEN` + `WORKBUDDY_UID` | 三选一 | 旧单账号兜底 |
 | （本机令牌文件） | 三选一 | 仅本地模式：自动探测 `workbuddy-desktop.info` |
 | `WORKBUDDY_SECRET` | 否 | CF 端 HTTP 手动触发鉴权密钥 |
-| `WXPUSHER_APP_TOKEN` / `WXPUSHER_UID` | 否 | WxPusher 推送通知 |
+| `WECOM` | 否 | 企业微信应用消息通知，格式 `corpid\|agentid\|secret` |
 
 > accessToken 是 JWT，约 60 天有效；过期后对应账号报 401，更新对应变量即可。签到接口幂等，重复执行不重复发放。
 
@@ -70,8 +70,7 @@ mise exec -- node src/main.js --no-notify  # 签到但不推送通知
 | Secret | 必填 | 说明 |
 |--------|------|------|
 | `WORKBUDDY` | 是 | 多账号，每行 `ACCESS_TOKEN#UID#备注`，换行分隔 |
-| `WXPUSHER_APP_TOKEN` | 否 | WxPusher 推送通知 |
-| `WXPUSHER_UID` | 否 | WxPusher 推送目标 UID |
+| `WECOM` | 否 | 企业微信通知，格式 `corpid\|agentid\|secret` |
 
 > `WORKBUDDY_SECRET` 仅用于 CF Workers HTTP 鉴权，GitHub Actions 不需要。
 
@@ -92,9 +91,8 @@ mise exec -- npx wrangler login
 mise exec -- npx wrangler secret put WORKBUDDY
 # 可选：HTTP 手动触发鉴权
 mise exec -- npx wrangler secret put WORKBUDDY_SECRET
-# 可选：WxPusher 通知
-mise exec -- npx wrangler secret put WXPUSHER_APP_TOKEN
-mise exec -- npx wrangler secret put WXPUSHER_UID
+# 可选：企业微信通知
+mise exec -- npx wrangler secret put WECOM
 
 mise exec -- npx wrangler deploy
 ```

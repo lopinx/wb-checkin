@@ -4,13 +4,13 @@
 const ENDPOINT_CHECKIN = "https://copilot.tencent.com/v2/billing/meter/daily-checkin";
 const ENDPOINT_RESOURCE = "https://copilot.tencent.com/v2/billing/meter/get-user-resource";
 const RESOURCE_BODY = { PageNumber: 1, PageSize: 100, ProductCode: "p_tcaca", Status: [0, 3], OnlyValidPeriod: true };
-const WXPUSHER_API = "https://wxpusher.zjiecode.com/api/send/message";
+const WECOM_TOKEN_API = "https://qyapi.weixin.qq.com/cgi-bin/gettoken";
+const WECOM_SEND_API = "https://qyapi.weixin.qq.com/cgi-bin/message/send";
 
 const ENV_MULTI = "WORKBUDDY";
 const ENV_TOKEN = "WORKBUDDY_ACCESS_TOKEN";
 const ENV_UID = "WORKBUDDY_UID";
-const ENV_WXPUSHER_TOKEN = "WXPUSHER_APP_TOKEN";
-const ENV_WXPUSHER_UID = "WXPUSHER_UID";
+const ENV_WECOM = "WECOM";
 
 // ---------- 环境无关的跨平台工具 ----------
 function decodeExp(token) {
@@ -165,33 +165,55 @@ function joinPath(base, rel) {
 
 // ---------- 通知 ----------
 async function notify(title, content, env, log) {
-  const sent = await wxpusherSend(title, content, env, log);
-  if (sent) log.info("[通知] WxPusher 推送完成");
-  else log.info("[通知] 未发送(未配置 WxPusher 或发送失败)");
+  const sent = await wecomSend(title, content, env, log);
+  if (sent) log.info("[通知] 企业微信推送完成");
+  else log.info("[通知] 未发送(未配置 WECOM 或发送失败)");
 }
 
-async function wxpusherSend(title, content, env, log) {
-  const appToken = (env[ENV_WXPUSHER_TOKEN] || "").trim();
-  const uid = (env[ENV_WXPUSHER_UID] || "").trim();
-  if (!appToken || !uid) {
-    log.info(`[通知] WxPusher 未配置(缺 ${ENV_WXPUSHER_TOKEN}/${ENV_WXPUSHER_UID}), 跳过`);
+// 解析 WECOM 环境变量: corpid|agentid|secret
+function parseWecom(env) {
+  const raw = (env[ENV_WECOM] || "").trim();
+  if (!raw) return null;
+  const [corpid, agentid, secret] = raw.split("|").map((s) => (s || "").trim());
+  if (!corpid || !agentid || !secret) return null;
+  return { corpid, agentid, secret };
+}
+
+async function wecomSend(title, content, env, log) {
+  const cfg = parseWecom(env);
+  if (!cfg) {
+    log.info(`[通知] 企业微信未配置(缺 ${ENV_WECOM}=corpid|agentid|secret), 跳过`);
     return false;
   }
   try {
-    const resp = await fetch(WXPUSHER_API, {
+    // 1) 获取 access_token
+    const tokenUrl = `${WECOM_TOKEN_API}?corpid=${cfg.corpid}&corpsecret=${cfg.secret}`;
+    const tokenResp = await fetch(tokenUrl);
+    const tokenJson = await tokenResp.json().catch(() => ({ errcode: -1, errmsg: "token 响应解析失败" }));
+    if (tokenJson.errcode !== 0) {
+      log.info(`[通知] 企业微信获取 access_token 失败: ${tokenJson.errmsg || JSON.stringify(tokenJson)}`);
+      return false;
+    }
+    const accessToken = tokenJson.access_token;
+
+    // 2) 发送应用消息（text，非群聊，推送给应用可见范围内的成员）
+    const sendUrl = `${WECOM_SEND_API}?access_token=${accessToken}`;
+    const sendResp = await fetch(sendUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json;charset=utf-8" },
       body: JSON.stringify({
-        appToken: appToken, uids: [uid], topicIds: [], summary: title,
-        content: content.replace(/\n/g, "<br>"), contentType: 1, verifyPay: false,
+        touser: "@all",
+        msgtype: "text",
+        agentid: cfg.agentid,
+        text: { content: `${title}\n\n${content}` },
       }),
     });
-    const rj = await resp.json().catch(() => ({ code: -1, msg: "响应解析失败" }));
-    if (rj.code === 1000) { log.info("[通知] WxPusher 发送成功"); return true; }
-    log.info("[通知] WxPusher 返回异常: " + (rj.msg || JSON.stringify(rj)));
+    const sendJson = await sendResp.json().catch(() => ({ errcode: -1, errmsg: "send 响应解析失败" }));
+    if (sendJson.errcode === 0) { log.info("[通知] 企业微信发送成功"); return true; }
+    log.info(`[通知] 企业微信发送失败: ${sendJson.errmsg || JSON.stringify(sendJson)}`);
     return false;
   } catch (e) {
-    log.info("[通知] WxPusher 通知失败: " + e);
+    log.info("[通知] 企业微信通知异常: " + e);
     return false;
   }
 }

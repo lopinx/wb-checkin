@@ -21,8 +21,7 @@ jobs:
     timeout-minutes: 5
     env:
       WORKBUDDY: ${{ secrets.WORKBUDDY }}
-      WXPUSHER_APP_TOKEN: ${{ secrets.WXPUSHER_APP_TOKEN }}
-      WXPUSHER_UID: ${{ secrets.WXPUSHER_UID }}
+      WECOM: ${{ secrets.WECOM }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
