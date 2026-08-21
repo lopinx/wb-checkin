@@ -1,0 +1,17 @@
+{
+  "name": "wb-checkin",
+  "version": "2.0.0",
+  "description": "WorkBuddy 每日积分自动签到（Cloudflare Workers + 本地 Node.js）",
+  "type": "module",
+  "main": "src/main.js",
+  "license": "WTFPL",
+  "scripts": {
+    "start": "node src/main.js",
+    "dry": "node src/main.js --dry-run",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}
