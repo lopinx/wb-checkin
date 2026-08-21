@@ -1,6 +1,6 @@
 # WorkBuddy 每日积分自动签到
 
-WorkBuddy（腾讯 CodeBuddy Copilot）每日积分自动签到脚本，支持 **Cloudflare Workers 定时执行** 与 **本地 Node.js 直接运行** 两种模式，单文件零运行时依赖。
+WorkBuddy（腾讯 CodeBuddy Copilot）每日积分自动签到脚本，支持 **Cloudflare Workers 定时执行**、**GitHub Actions 定时/手动执行** 与 **本地 Node.js 直接运行** 三种模式，单文件零运行时依赖。
 
 ## 功能
 
@@ -8,7 +8,7 @@ WorkBuddy（腾讯 CodeBuddy Copilot）每日积分自动签到脚本，支持 *
 - 支持多账号（环境变量 `WORKBUDDY` 每行一个账号）
 - 签到前后积分对比，展示本次获得量
 - 企业微信应用消息推送通知
-- Cloudflare Cron 定时 / HTTP 手动触发 / 本地命令行三入口
+- Cloudflare Workers 定时/HTTP、GitHub Actions 定时/手动、本地命令行多入口
 
 ## 环境要求
 

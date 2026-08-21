@@ -1,5 +1,5 @@
 // src/main.js
-// WorkBuddy 每日积分自动签到 —— Cloudflare Workers + 本地 Node.js 双模运行
+// WorkBuddy 每日积分自动签到 —— Cloudflare Workers + GitHub Actions + 本地 Node.js 三模运行
 // 部署见 README.md；核心逻辑与平台无关，仅入口分流。
 const ENDPOINT_CHECKIN = "https://copilot.tencent.com/v2/billing/meter/daily-checkin";
 const ENDPOINT_RESOURCE = "https://copilot.tencent.com/v2/billing/meter/get-user-resource";
@@ -176,7 +176,7 @@ function parseWecom(env) {
   if (!raw) return null;
   const [corpid, agentid, secret] = raw.split("|").map((s) => (s || "").trim());
   if (!corpid || !agentid || !secret) return null;
-  return { corpid, agentid, secret };
+  return { corpid, agentid: parseInt(agentid, 10), secret };
 }
 
 async function wecomSend(title, content, env, log) {
@@ -187,7 +187,7 @@ async function wecomSend(title, content, env, log) {
   }
   try {
     // 1) 获取 access_token
-    const tokenUrl = `${WECOM_TOKEN_API}?corpid=${cfg.corpid}&corpsecret=${cfg.secret}`;
+    const tokenUrl = `${WECOM_TOKEN_API}?corpid=${encodeURIComponent(cfg.corpid)}&corpsecret=${encodeURIComponent(cfg.secret)}`;
     const tokenResp = await fetch(tokenUrl);
     const tokenJson = await tokenResp.json().catch(() => ({ errcode: -1, errmsg: "token 响应解析失败" }));
     if (tokenJson.errcode !== 0) {
