@@ -59,6 +59,30 @@ mise exec -- node src/main.js --no-notify  # 签到但不推送通知
 
 退出码：全部成功 / dry-run 为 0，有真实失败为 1，未找到任何登录态为 2。
 
+## GitHub Actions 运行
+
+项目内置 `.github/workflows/checkin.yml`，支持定时自动签到和手动触发，无需服务器或额外部署。
+
+### 配置 Secrets
+
+在仓库 **Settings → Secrets and variables → Actions → New repository secret** 添加：
+
+| Secret | 必填 | 说明 |
+|--------|------|------|
+| `WORKBUDDY` | 是 | 多账号，每行 `ACCESS_TOKEN#UID#备注`，换行分隔 |
+| `WXPUSHER_APP_TOKEN` | 否 | WxPusher 推送通知 |
+| `WXPUSHER_UID` | 否 | WxPusher 推送目标 UID |
+
+> `WORKBUDDY_SECRET` 仅用于 CF Workers HTTP 鉴权，GitHub Actions 不需要。
+
+### 自动定时
+
+Workflow 默认每天 UTC 01:30（北京时间 09:30）执行，与 `wrangler.toml` 的 cron 一致。GitHub Actions cron 使用 UTC，且可能有几分钟延迟。
+
+### 手动触发
+
+在仓库 **Actions → WorkBuddy 签到 → Run workflow** 可手动触发，支持勾选「干跑」选项（不实际请求签到接口）。
+
 ## Cloudflare Workers 部署
 
 ```bash
