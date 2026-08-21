@@ -174,9 +174,10 @@ async function notify(title, content, env, log) {
 function parseWecom(env) {
   const raw = (env[ENV_WECOM] || "").trim();
   if (!raw) return null;
-  const [corpid, agentid, secret] = raw.split("|").map((s) => (s || "").trim());
-  if (!corpid || !agentid || !secret) return null;
-  return { corpid, agentid: parseInt(agentid, 10), secret };
+  const [corpid, agentidStr, secret] = raw.split("|").map((s) => (s || "").trim());
+  const agentid = parseInt(agentidStr, 10);
+  if (!corpid || !agentidStr || !secret || Number.isNaN(agentid)) return null;
+  return { corpid, agentid, secret };
 }
 
 async function wecomSend(title, content, env, log) {
@@ -197,7 +198,7 @@ async function wecomSend(title, content, env, log) {
     const accessToken = tokenJson.access_token;
 
     // 2) 发送应用消息（text，非群聊，推送给应用可见范围内的成员）
-    const sendUrl = `${WECOM_SEND_API}?access_token=${accessToken}`;
+    const sendUrl = `${WECOM_SEND_API}?access_token=${encodeURIComponent(accessToken)}`;
     const sendResp = await fetch(sendUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json;charset=utf-8" },
